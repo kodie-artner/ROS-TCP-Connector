@@ -12,6 +12,7 @@ public class TFSystem
 {
     public static TFSystem instance { get; private set; }
     Dictionary<string, TFTopicState> m_TFTopics = new Dictionary<string, TFTopicState>();
+    public Dictionary<string, TFTopicState> TFTopics { get => m_TFTopics; set => m_TFTopics = value; }
 
     public class TFTopicState
     {
@@ -19,10 +20,11 @@ public class TFSystem
         Dictionary<string, TFStream> m_TransformTable = new Dictionary<string, TFStream>();
         List<Action<TFStream>> m_Listeners = new List<Action<TFStream>>();
 
-        public TFTopicState(string tfTopic = "/tf")
+        public TFTopicState(string tfTopic = "/tf", string tfStaticTopic = "/tf_static")
         {
             m_TFTopic = tfTopic;
             ROSConnection.GetOrCreateInstance().Subscribe<TFMessageMsg>(tfTopic, ReceiveTF);
+            ROSConnection.GetOrCreateInstance().Subscribe<TFMessageMsg>(tfStaticTopic, ReceiveTF);
         }
 
         public TFStream GetOrCreateFrame(string frame_id)

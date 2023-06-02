@@ -17,6 +17,9 @@ namespace Unity.Robotics.ROSTCPConnector
     {
         public const string k_Version = "v0.7.0";
         public const string k_CompatibleVersionPrefix = "v0.7.";
+        [SerializeField]
+        private bool m_ros2 = false;
+        public bool ROS2 { get => ROSConfig.ROS2; set => ROSConfig.ROS2 = value; }
 
         // Variables required for ROS communication
         [SerializeField]
@@ -475,6 +478,7 @@ namespace Unity.Robotics.ROSTCPConnector
         {
             if (_instance == null)
                 _instance = this;
+            ROS2 = m_ros2;
         }
 
         void Start()
@@ -499,6 +503,11 @@ namespace Unity.Robotics.ROSTCPConnector
 
         public void Connect()
         {
+            Connect(OnConnectionStartedCallback, OnConnectionLostCallback);
+        }
+
+        public void Connect(Action<System.Net.Sockets.NetworkStream> connectionStartedCB, Action connectionLostCB)
+        {
             if (!IPFormatIsCorrect(RosIPAddress))
                 Debug.LogWarning("Invalid ROS IP address: " + RosIPAddress);
 
@@ -510,8 +519,8 @@ namespace Unity.Robotics.ROSTCPConnector
                 m_NetworkTimeoutSeconds,
                 m_KeepaliveTime,
                 (int)(m_SleepTimeSeconds * 1000.0f),
-                OnConnectionStartedCallback,
-                OnConnectionLostCallback,
+                connectionStartedCB,
+                connectionLostCB,
                 m_OutgoingMessageQueue,
                 m_IncomingMessages,
                 m_ConnectionThreadCancellation.Token
@@ -519,7 +528,7 @@ namespace Unity.Robotics.ROSTCPConnector
         }
 
         // NB this callback is not running on the main thread, be cautious about modifying data here
-        void OnConnectionStartedCallback(NetworkStream stream)
+        public void OnConnectionStartedCallback(NetworkStream stream)
         {
             RosTopicState[] topics;
             lock (m_Topics)
@@ -533,7 +542,7 @@ namespace Unity.Robotics.ROSTCPConnector
             RefreshTopicsList();
         }
 
-        void OnConnectionLostCallback()
+        public void OnConnectionLostCallback()
         {
             RosTopicState[] topics;
             lock (m_Topics)
@@ -649,17 +658,21 @@ namespace Unity.Robotics.ROSTCPConnector
                         }
 
                         var handshakeMetadata = JsonUtility.FromJson<SysCommand_Handshake_Metadata>(handshakeCommand.metadata);
-#if ROS2
-                        if (handshakeMetadata.protocol != "ROS2")
+
+                        if (ROSConfig.ROS2)
                         {
-                            Debug.LogError($"Incompatible protocol: ROS-TCP-Endpoint is using {handshakeMetadata.protocol}, but Unity is in ROS2 mode. Switch it from the Robotics/Ros Settings menu.");
+                            if (handshakeMetadata.protocol != "ROS2")
+                            {
+                                Debug.LogError($"Incompatible protocol: ROS-TCP-Endpoint is using {handshakeMetadata.protocol}, but Unity is in ROS2 mode. Switch it from the Robotics/Ros Settings menu.");
+                            }
                         }
-#else
-                        if (handshakeMetadata.protocol != "ROS1")
+                        else
                         {
-                            Debug.LogError($"Incompatible protocol: ROS-TCP-Endpoint is using {handshakeMetadata.protocol}, but Unity is in ROS1 mode. Switch it from the Robotics/Ros Settings menu.");
+                            if (handshakeMetadata.protocol != "ROS1")
+                            {
+                                Debug.LogError($"Incompatible protocol: ROS-TCP-Endpoint is using {handshakeMetadata.protocol}, but Unity is in ROS1 mode. Switch it from the Robotics/Ros Settings menu.");
+                            }
                         }
-#endif
                     }
                     break;
                 case SysCommand.k_SysCommand_Log:
@@ -890,7 +903,6 @@ namespace Unity.Robotics.ROSTCPConnector
                 {
                     Tuple<string, byte[]> content = await ReadMessageContents(networkStream, sleepMilliseconds, token);
                     ROSConnection.m_HasConnectionError = false;
-
                     if (content.Item1 != "") // ignore keepalive messages
                         queue.Enqueue(content);
                 }
@@ -1057,12 +1069,15 @@ namespace Unity.Robotics.ROSTCPConnector
                 HasConnectionThread,
                 HasConnectionError
             );
-
-#if ROS2
-            string protocolName = "ROS2";
-#else
-            string protocolName = "ROS";
-#endif
+            string protocolName;
+            if (ROSConfig.ROS2)
+            {
+                protocolName = "ROS2";
+            }
+            else
+            {
+                protocolName = "ROS";
+            }
 
             GUILayout.Space(30);
             GUILayout.Label($"{protocolName} IP: ", labelStyle, GUILayout.Width(100));

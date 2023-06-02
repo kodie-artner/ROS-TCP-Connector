@@ -1051,7 +1051,7 @@ namespace RosMessageTypes.Std
     [Obsolete("MTime is now called TimeMsg")]
     public class MTime : TimeMsg
     {
-        public new const string RosMessageName = k_RosMessageName;
+        public new string RosMessageName = k_RosMessageName;
         public uint secs;
         public uint nsecs;
         public MTime() => throw new NotImplementedException("MTime is now called TimeMsg");

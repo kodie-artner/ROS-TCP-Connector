@@ -10,12 +10,14 @@ namespace Unity.Robotics.Visualizations
         None,
         Exact,
         TrackLatest,
+        RelativeToMapFrame,
     }
 
     [System.Serializable]
     public class TFTrackingSettings
     {
-        public TFTrackingType type = TFTrackingType.Exact;
+        private TFTrackingType m_Type  = TFTrackingType.RelativeToMapFrame;
+        public TFTrackingType type { get => m_Type; }        
         public string tfTopic = "/tf";
     }
 
@@ -44,6 +46,8 @@ namespace Unity.Robotics.Visualizations
         List<LabelInfo3d> m_Labels = new List<LabelInfo3d>();
         bool m_isDirty = false;
         Coroutine m_DestroyAfterDelay;
+        // Map Frame
+        Transform mapTransform;
 
         public static Drawing3d Create(float duration = -1, Material material = null)
         {
@@ -52,6 +56,15 @@ namespace Unity.Robotics.Visualizations
 
         public void Init(Drawing3dManager parent, Material material, float duration = -1)
         {
+            GameObject mapObject = GameObject.FindWithTag("Map");
+            if (mapObject == null)
+            {
+                mapObject = new GameObject("Map");
+                mapObject.tag = "Map";
+            }
+
+            mapTransform = mapObject.transform;
+
             m_Mesh = new Mesh();
 
             transform.parent = parent.transform;
@@ -92,6 +105,14 @@ namespace Unity.Robotics.Visualizations
                         transform.parent = TFSystem.instance.GetTransformObject(headerMsg.frame_id, tfTrackingType.tfTopic).transform;
                         transform.localPosition = Vector3.zero;
                         transform.localRotation = Quaternion.identity;
+                    }
+                    break;
+                case TFTrackingType.RelativeToMapFrame:
+                    {
+                        transform.SetParent(mapTransform);
+                        TFFrame frame = TFSystem.instance.GetTransform(headerMsg);
+                        transform.localPosition = frame.translation;
+                        transform.localRotation = frame.rotation;
                     }
                     break;
                 case TFTrackingType.None:

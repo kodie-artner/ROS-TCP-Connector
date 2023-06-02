@@ -13,6 +13,16 @@ namespace Unity.Robotics.ROSTCPConnector.Editor
         [MenuItem("Robotics/ROS Settings", false, 0)]
         public static void OpenWindow()
         {
+            if (ROSConfig.ROS2)
+            {
+                m_SelectedProtocol = RosProtocol.ROS2;
+                k_AlternateProtocol = RosProtocol.ROS1;
+            }
+            else
+            {
+                m_SelectedProtocol = RosProtocol.ROS1;
+                k_AlternateProtocol = RosProtocol.ROS2;
+            }
             ROSSettingsEditor window = GetWindow<ROSSettingsEditor>(false, "ROS Settings", true);
             window.minSize = new Vector2(300, 65);
             window.maxSize = new Vector2(600, 500);
@@ -29,13 +39,8 @@ namespace Unity.Robotics.ROSTCPConnector.Editor
             ROS2
         }
 
-#if ROS2
-        RosProtocol m_SelectedProtocol = RosProtocol.ROS2;
-        const RosProtocol k_AlternateProtocol = RosProtocol.ROS1;
-#else
-        RosProtocol m_SelectedProtocol = RosProtocol.ROS1;
-        const RosProtocol k_AlternateProtocol = RosProtocol.ROS2;
-#endif
+        static RosProtocol m_SelectedProtocol = RosProtocol.ROS1;
+        static RosProtocol k_AlternateProtocol = RosProtocol.ROS2;
 
         [SerializeField] string[] m_TFTopics;
         UnityEditor.Editor editor;
@@ -63,36 +68,36 @@ namespace Unity.Robotics.ROSTCPConnector.Editor
 
             prefab.ConnectOnStart = EditorGUILayout.Toggle("Connect on Startup", prefab.ConnectOnStart);
 
-            if (m_SelectedProtocol == k_AlternateProtocol)
-            {
-                EditorGUI.BeginDisabledGroup(true);
-                EditorGUILayout.EnumPopup("Protocol", m_SelectedProtocol);
-                EditorGUILayout.LabelField("(Recompiling, please wait...)");
-                EditorGUI.EndDisabledGroup();
-            }
-            else
-            {
-                m_SelectedProtocol = (RosProtocol)EditorGUILayout.EnumPopup("Protocol", m_SelectedProtocol);
-                if (m_SelectedProtocol == k_AlternateProtocol)
-                {
-                    var buildTarget = EditorUserBuildSettings.activeBuildTarget;
-                    var buildTargetGroup = BuildPipeline.GetBuildTargetGroup(buildTarget);
+            // if (m_SelectedProtocol == k_AlternateProtocol)
+            // {
+            //     EditorGUI.BeginDisabledGroup(true);
+            //     EditorGUILayout.EnumPopup("Protocol", m_SelectedProtocol);
+            //     EditorGUILayout.LabelField("(Recompiling, please wait...)");
+            //     EditorGUI.EndDisabledGroup();
+            // }
+            // else
+            // {
+            //     m_SelectedProtocol = (RosProtocol)EditorGUILayout.EnumPopup("Protocol", m_SelectedProtocol);
+            //     if (m_SelectedProtocol == k_AlternateProtocol)
+            //     {
+            //         var buildTarget = EditorUserBuildSettings.activeBuildTarget;
+            //         var buildTargetGroup = BuildPipeline.GetBuildTargetGroup(buildTarget);
 
-                    List<string> allDefines = PlayerSettings.GetScriptingDefineSymbolsForGroup(buildTargetGroup).Split(';').ToList();
-                    if (m_SelectedProtocol == RosProtocol.ROS1)
-                    {
-                        allDefines.Remove("ROS2");
-                        Debug.Log($"Removing 'ROS2' from the scripting define symbols for build target '{buildTargetGroup}'.");
-                    }
-                    else
-                    {
-                        allDefines.Add("ROS2");
-                        Debug.Log($"Adding 'ROS2' to the scripting define symbols for build target '{buildTargetGroup}'.");
-                    }
+            //         List<string> allDefines = PlayerSettings.GetScriptingDefineSymbolsForGroup(buildTargetGroup).Split(';').ToList();
+            //         if (m_SelectedProtocol == RosProtocol.ROS1)
+            //         {
+            //             allDefines.Remove("ROS2");
+            //             Debug.Log($"Removing 'ROS2' from the scripting define symbols for build target '{buildTargetGroup}'.");
+            //         }
+            //         else
+            //         {
+            //             allDefines.Add("ROS2");
+            //             Debug.Log($"Adding 'ROS2' to the scripting define symbols for build target '{buildTargetGroup}'.");
+            //         }
 
-                    PlayerSettings.SetScriptingDefineSymbolsForGroup(buildTargetGroup, string.Join(";", allDefines));
-                }
-            }
+            //         PlayerSettings.SetScriptingDefineSymbolsForGroup(buildTargetGroup, string.Join(";", allDefines));
+            //     }
+            // }
 
             EditorGUILayout.LabelField("Settings for a new ROSConnection.instance", EditorStyles.boldLabel);
 

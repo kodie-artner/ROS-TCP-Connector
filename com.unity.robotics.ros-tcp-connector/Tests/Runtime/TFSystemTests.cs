@@ -23,20 +23,12 @@ namespace UnitTests
 
         HeaderMsg MakeHeaderMsg(TimeMsg time, string frameID)
         {
-#if !ROS2
-            return new HeaderMsg((uint)0, time, frameID);
-#else
             return new HeaderMsg(time, frameID);
-#endif
         }
 
         TimeMsg MakeTimeMsg(int secs, int nsecs)
         {
-#if !ROS2
             return new TimeMsg((uint)secs, (uint)nsecs);
-#else
-            return new TimeMsg(secs, (uint)nsecs);
-#endif
         }
 
         [Test]

@@ -56,10 +56,11 @@ namespace Unity.Robotics.ROSTCPConnector.MessageGeneration
 
         public void SerializeMessage(Message message)
         {
-#if ROS2
-            // insert the ros2 header
-            Write(k_Ros2Header);
-#endif
+            if (ROSConfig.ROS2)
+            {
+                // insert the ros2 header
+                Write(k_Ros2Header);
+            }
             m_LengthCorrection += m_AlignmentOffset;
             m_AlignmentOffset = 0; // header doesn't affect alignment
             message.SerializeTo(this);
@@ -99,12 +100,13 @@ namespace Unity.Robotics.ROSTCPConnector.MessageGeneration
         // https://github.com/eProsima/Fast-CDR/blob/53a0b8cae0b9083db69821be0edb97c944755591/include/fastcdr/Cdr.h#L239
         void Align(int dataSize)
         {
-#if ROS2
-            int padding = (dataSize - (m_AlignmentOffset % dataSize)) & (dataSize - 1);
-            if (padding > 0)
-                m_ListOfSerializations.Add(k_PaddingBytes[padding]);
-            m_AlignmentOffset += padding;
-#endif
+            if (ROSConfig.ROS2)
+            {
+                int padding = (dataSize - (m_AlignmentOffset % dataSize)) & (dataSize - 1);
+                if (padding > 0)
+                    m_ListOfSerializations.Add(k_PaddingBytes[padding]);
+                m_AlignmentOffset += padding;
+            }
         }
 
         public void Write(Message message)
@@ -330,39 +332,40 @@ namespace Unity.Robotics.ROSTCPConnector.MessageGeneration
         {
             byte[] encodedString = Encoding.UTF8.GetBytes(inputString);
 
-#if !ROS2
-            m_ListOfSerializations.Add(BitConverter.GetBytes(encodedString.Length));
-            m_ListOfSerializations.Add(encodedString);
-
-            m_AlignmentOffset += 4 + encodedString.Length;
-#else
-            // ROS2 strings are 4-byte aligned, and padded with a null byte at the end
-            Align(sizeof(int));
-            m_ListOfSerializations.Add(BitConverter.GetBytes(encodedString.Length + 1));
-            m_ListOfSerializations.Add(encodedString);
-            m_ListOfSerializations.Add(k_NullByte);
-
-            m_AlignmentOffset += 4 + encodedString.Length + 1;
-#endif
+            if (ROSConfig.ROS2)
+            {
+                // ROS2 strings are 4-byte aligned, and padded with a null byte at the end
+                Align(sizeof(int));
+                m_ListOfSerializations.Add(BitConverter.GetBytes(encodedString.Length + 1));
+                m_ListOfSerializations.Add(encodedString);
+                m_ListOfSerializations.Add(k_NullByte);
+                m_AlignmentOffset += 4 + encodedString.Length + 1;
+            }
+            else
+            {
+                m_ListOfSerializations.Add(BitConverter.GetBytes(encodedString.Length));
+                m_ListOfSerializations.Add(encodedString);
+                m_AlignmentOffset += 4 + encodedString.Length;
+            }
         }
 
         public void WriteUnaligned(string inputString)
         {
             byte[] encodedString = Encoding.UTF8.GetBytes(inputString);
-
-#if !ROS2
-            m_ListOfSerializations.Add(BitConverter.GetBytes(encodedString.Length));
-            m_ListOfSerializations.Add(encodedString);
-
-            m_AlignmentOffset += 4 + encodedString.Length;
-#else
-            // ROS2 strings are 4-byte aligned, and padded with a null byte at the end
-            m_ListOfSerializations.Add(BitConverter.GetBytes(encodedString.Length + 1));
-            m_ListOfSerializations.Add(encodedString);
-            m_ListOfSerializations.Add(k_NullByte);
-
-            m_AlignmentOffset += 4 + encodedString.Length + 1;
-#endif
+            if (ROSConfig.ROS2)
+            {
+                // ROS2 strings are 4-byte aligned, and padded with a null byte at the end
+                m_ListOfSerializations.Add(BitConverter.GetBytes(encodedString.Length + 1));
+                m_ListOfSerializations.Add(encodedString);
+                m_ListOfSerializations.Add(k_NullByte);
+                m_AlignmentOffset += 4 + encodedString.Length + 1;
+            }
+            else
+            {
+                m_ListOfSerializations.Add(BitConverter.GetBytes(encodedString.Length));
+                m_ListOfSerializations.Add(encodedString);
+                m_AlignmentOffset += 4 + encodedString.Length;
+            }
         }
 
         public void Write(string[] values)
